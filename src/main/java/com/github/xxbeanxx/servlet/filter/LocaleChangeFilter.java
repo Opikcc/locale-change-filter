@@ -38,7 +38,7 @@ public class LocaleChangeFilter implements Filter {
 	    final HttpServletRequest httpServletRequest = (HttpServletRequest) servletRequest;
 	    final HttpServletResponse httpServletResponse = (HttpServletResponse) servletResponse;
 
-		final Locale locale = Locale.ENGLISH;
+		final Locale locale = Locale.FRENCH;
 		final LocaleRequestWrapper localeRequestWrapper = new LocaleRequestWrapper(httpServletRequest, locale);
 
 		filterChain.doFilter(localeRequestWrapper, servletResponse);
