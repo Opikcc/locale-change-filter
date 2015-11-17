@@ -16,6 +16,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.lang3.LocaleUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,20 +28,53 @@ import org.slf4j.LoggerFactory;
  */
 public class LocaleChangeFilter implements Filter {
 
-	private static final Logger LOGGER = LoggerFactory.getLogger(LocaleChangeFilter.class);
+	public static final Locale[] DEFAULT_ALLOWED_LOCALES = new Locale[] { Locale.ENGLISH, Locale.FRENCH };
+	public static final String DEFAULT_LOCALE_PARAM = "locale";
+	public static final Locale DEFAULT_DEFAULT_LOCALE = Locale.ENGLISH;
+	
+	public static final String ALLOWED_LOCALES_KEY = "allowedLocales";
+	public static final String LOCALE_PARAM_NAME_KEY = "localeParamName";
+	public static final String DEFAULT_LOCALE_KEY = "defaultLocale";
 
+	private static final String LOCALES_DELIMITER = ",; \t\n";
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(LocaleChangeFilter.class);
+	
+	private Locale[] allowedLocales = DEFAULT_ALLOWED_LOCALES;
+	
+	private Locale defaultLocale = DEFAULT_DEFAULT_LOCALE;
+	
+	private String localeParamName = DEFAULT_LOCALE_PARAM; 
+	
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {
-		/* intentionally left blank*/
+		final String paramNameInitParameter = filterConfig.getInitParameter(LOCALE_PARAM_NAME_KEY);
+		if (paramNameInitParameter != null) {
+			this.localeParamName = paramNameInitParameter;
+		}
+
+		final String defaultLocaleInitParameter = filterConfig.getInitParameter(DEFAULT_LOCALE_KEY);
+		if (defaultLocaleInitParameter != null) {
+			this.defaultLocale = LocaleUtils.toLocale(defaultLocaleInitParameter);
+		}
+
+		final String allowedLocalesInitParameter = filterConfig.getInitParameter(ALLOWED_LOCALES_KEY);
+		if (allowedLocalesInitParameter != null) {
+			final String[] localeStrings = StringUtils.split(allowedLocalesInitParameter, LOCALES_DELIMITER);
+			this.allowedLocales = new Locale[localeStrings.length];
+			for (int i = 0; i < localeStrings.length; i++) {
+				this.allowedLocales[i] = LocaleUtils.toLocale(localeStrings[i]);
+			}
+		}
 	}
 
 	@Override
 	public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
 	    final HttpServletRequest httpServletRequest = (HttpServletRequest) servletRequest;
 	    final HttpServletResponse httpServletResponse = (HttpServletResponse) servletResponse;
-
-		final Locale locale = Locale.FRENCH;
-		final LocaleRequestWrapper localeRequestWrapper = new LocaleRequestWrapper(httpServletRequest, locale);
+	    
+		final Locale requestLocale = findRequestLocale(httpServletRequest);
+		final LocaleRequestWrapper localeRequestWrapper = new LocaleRequestWrapper(httpServletRequest, requestLocale);
 
 		filterChain.doFilter(localeRequestWrapper, servletResponse);
 	}
@@ -47,6 +82,21 @@ public class LocaleChangeFilter implements Filter {
 	@Override
 	public void destroy() {
 		/* intentionally left blank */
+	}
+
+	private Locale findRequestLocale(HttpServletRequest request) {
+		final String localParam = request.getParameter(localeParamName);
+		
+		if (localParam != null) {
+			try {
+				return LocaleUtils.toLocale(localParam);
+			}
+			catch (final IllegalArgumentException illegalArgumentException) {
+				LOGGER.warn("Invalid locale parameter: {}; returning default: {}", localParam, defaultLocale);
+			}
+		}
+		
+		return defaultLocale;
 	}
 
 	/**
