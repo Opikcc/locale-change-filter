@@ -9,6 +9,8 @@ import javax.servlet.http.HttpServletResponse;
  */
 public abstract class CookieUtils {
 
+	public static final String DEFAULT_COOKIE_PATH = "/";
+	
 	public static void addCookie(HttpServletResponse response, Cookie cookie, Integer maxAge, Boolean secure) {
 		if (maxAge != null) {
 			cookie.setMaxAge(maxAge);
@@ -28,7 +30,13 @@ public abstract class CookieUtils {
 			cookie.setDomain(domain);
 		}
 		
-		cookie.setPath(path);
+		if (path == null) {
+			cookie.setPath(CookieUtils.DEFAULT_COOKIE_PATH);
+		}
+		else {
+			cookie.setPath(path);
+		}
+		
 		return cookie;		
 	}
 	

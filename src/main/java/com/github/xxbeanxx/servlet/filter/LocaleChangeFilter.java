@@ -34,25 +34,41 @@ public class LocaleChangeFilter implements Filter {
 	/**
 	 * Default locale querystring parameter, if none is specified in filter's InitParams
 	 */
-	public static final String DEFAULT_LOCALE_PARAM = "locale";
+	public static final String DEFAULT_LOCALE_QUERYSTRING_PARAM_KEY = "locale";
 	
-	/**
-	 * InitParam key that specifies what querystring parameter will trigger the locale switch.
-	 */
-	public static final String LOCALE_PARAM_NAME_KEY = "localeParamName";
+	public static final String COOKIE_NAME_INITPARAM_KEY = "cookieName";
+	public static final String COOKIE_DOMAIN_INITPARAM_KEY = "cookieDomain";
+	public static final String COOKIE_PATH_INITPARAM_KEY = "cookiePath";
+	public static final String COOKIE_MAX_AGE_INITPARAM_KEY = "cookieMaxAge";
+	public static final String COOKIE_SECURE_INITPARAM_KEY = "cookieSecure";
+	public static final String LOCALE_INITPARAM_KEY = "localeQuerystringParam";
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(LocaleChangeFilter.class);
 
-	private String localeParamName = DEFAULT_LOCALE_PARAM;
+	private String localeQuerystringParamKey = DEFAULT_LOCALE_QUERYSTRING_PARAM_KEY;
 	
 	private String cookieName = DEFAULT_COOKIE_NAME;
 	
+	private String cookieDomain;
+	
+	private String cookiePath;
+	
+	private Integer cookieMaxAge;
+	
+	private boolean cookieSecure;
+	
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {
-		final String paramNameInitParameter = filterConfig.getInitParameter(LOCALE_PARAM_NAME_KEY);
+		final String paramNameInitParameter = filterConfig.getInitParameter(LOCALE_INITPARAM_KEY);
 		if (paramNameInitParameter != null) {
-			this.localeParamName = paramNameInitParameter;
+			this.localeQuerystringParamKey = paramNameInitParameter;
 		}
+		
+		final String cookieNameInitParameter = filterConfig.getInitParameter(COOKIE_NAME_INITPARAM_KEY);
+		if (cookieNameInitParameter != null) {
+			this.cookieName = cookieNameInitParameter;
+		}
+		
 	}
 
 	@Override
@@ -79,30 +95,29 @@ public class LocaleChangeFilter implements Filter {
 		Cookie cookie = CookieUtils.getCookie(request, cookieName);
 		
 		if (cookie == null) {
-			// TODO nulls
-			cookie = CookieUtils.createCookie(cookieName, locale.toString(), null, null);
+			cookie = CookieUtils.createCookie(cookieName, locale.toString(), cookieDomain, cookiePath);
 		}
 		else {
 			cookie.setValue(locale.toString());
 		}
 		
-		// TODO nulls
-		CookieUtils.addCookie(response, cookie, null, null);
+		CookieUtils.addCookie(response, cookie, cookieMaxAge, cookieSecure);
 	}
 
 	protected Locale determineOverridingLocale(Locale acceptHeaderLocale, Locale cookieLocale, Locale querystringLocale, Locale systemLocale) {
 		if (querystringLocale != null) {
 			return querystringLocale;
 		}
-		else if (cookieLocale != null) {
+		
+		if (cookieLocale != null) {
 			return cookieLocale;
 		}
-		else if (acceptHeaderLocale != null) {
+		
+		if (acceptHeaderLocale != null) {
 			return acceptHeaderLocale;
 		}
-		else {
-			return systemLocale;
-		}
+
+		return systemLocale;
 	}
 
 	protected Locale findAcceptHeaderLocale(HttpServletRequest request) {
@@ -121,7 +136,7 @@ public class LocaleChangeFilter implements Filter {
 	}
 
 	protected Locale findQuerystringLocale(HttpServletRequest request) {
-		final String localParam = request.getParameter(localeParamName);
+		final String localParam = request.getParameter(localeQuerystringParamKey);
 		return stringToLocale(localParam);
 	}
 
@@ -141,4 +156,5 @@ public class LocaleChangeFilter implements Filter {
 		
 		return null;
 	}
+	
 }
